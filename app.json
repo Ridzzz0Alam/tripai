@@ -20,6 +20,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
+      "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
@@ -33,7 +34,14 @@
         }
       ],
       "expo-secure-store",
-      "@sentry/react-native"
+      [
+        "@sentry/react-native",
+        {
+          "organization": "js-mastery-mp",
+          "project": "trip-ai",
+          "url": "https://de.sentry.io/"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,0 +1,8 @@
+// getSentryExpoConfig replaces getDefaultConfig so Metro emits the debug IDs
+// Sentry needs to symbolicate stack traces and match uploaded source maps.
+const { getSentryExpoConfig } = require("@sentry/react-native/metro");
+const { withNativeWind } = require("nativewind/metro");
+
+const config = getSentryExpoConfig(__dirname);
+
+module.exports = withNativeWind(config, { input: "./global.css" });

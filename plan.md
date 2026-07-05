@@ -1,4 +1,4 @@
-# Triply — Build Plan & Checklist
+# Trip AI — Build Plan & Checklist
 
 > AI trip planner (iOS + Android, Expo SDK 56). This is the living checklist for v1.
 > Check items off (`[x]`) as they're completed. Full spec lives at the bottom.
