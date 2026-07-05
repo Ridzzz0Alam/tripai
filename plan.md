@@ -1,110 +1,182 @@
-# TripAI — v1 Build Plan
+# Triply — Build Plan & Checklist
 
-An Expo SDK 57 / React Native 0.86 AI trip planner. This file is the living checklist for v1 —
-check items off (`[x]`) as they land. Full rationale lives in the approved plan; this is the todo view.
-
-**Legend:** `[ ]` todo · `[x]` done · `[~]` in progress
+> AI trip planner (iOS + Android, Expo SDK 56). This is the living checklist for v1.
+> Check items off (`[x]`) as they're completed. Full spec lives at the bottom.
 
 ---
 
-## Ground rules
-- [ ] Verify every Expo/RN API against https://docs.expo.dev/versions/v57.0.0/ before coding (AGENTS.md mandate)
-- [ ] Dev-first: run against local Expo dev server + **Inngest dev server** (`npx inngest-cli dev`); **no EAS Hosting deploy yet**
-- [ ] Keep backend code host-agnostic so the eventual EAS Hosting deploy is config-only
-- [ ] TypeScript strict; `expo lint` + `tsc` clean at each milestone
+## Legend
+
+- `[ ]` not started · `[~]` in progress · `[x]` done
+- Each phase has a **Definition of Done** so we know when to check the header.
 
 ---
 
-## Phase 0 — Environment & dependencies
-- [ ] Add RevenueCat dep `react-native-purchases` (+ config plugin), verify Expo 57 compat
-- [ ] Add test runner + supporting dev deps for critical-path tests
-- [ ] Fill `.env` from `.env.example` (Clerk, Neon, OpenAI, Google, ImageKit, Inngest, Sentry, RevenueCat)
-- [ ] Confirm `EXPO_PUBLIC_API_ORIGIN` handling for local dev
+## Phase 0 — Foundations
 
-## Phase 1 — Database schema
-- [ ] `users`: add `isPro boolean default false`, `proExpiresAt timestamp`
-- [ ] (Optional) `users.revenuecatId text` to correlate RevenueCat app_user_id
-- [ ] New `webhookEvents` table (`id`, `provider`, `externalId unique`, `receivedAt`) for webhook dedupe
-- [ ] `npm run db:generate` → `db:migrate`/`db:push` against Neon dev branch; confirm tables
+- [ ] Read Expo v56 docs for API routes / server output (per `AGENTS.md`)
+- [x] Set `web.output: "server"` in `app.json` (enables API routes)
+- [x] Install Expo-native deps: `@sentry/react-native`, `react-native-maps`, `expo-secure-store`, `expo-web-browser`, `expo-auth-session`, `expo-crypto`, `expo-apple-authentication`
+- [~] Install JS/server deps: `@clerk/expo` ✅ · `drizzle-orm` ✅ · `@neondatabase/serverless` ✅ · `inngest` ✅ · `svix` ✅ · `openai`, `imagekit`, `zod` (deferred to their phases)
+- [x] Install dev deps: `drizzle-kit`, `dotenv`
+- [~] Create `.env` + `.env.example` with all keys (Clerk, Neon, OpenAI, ImageKit, Unsplash, Sentry, Inngest · **Google Maps API key pending**)
+- [~] Add Clerk + relevant config plugins to `app.json` (`@clerk/expo`, `expo-secure-store`, `expo-web-browser`, Sentry)
+- [ ] Add Google Maps API keys to `app.json` (`ios.config.googleMapsApiKey` + `android.config.googleMaps.apiKey`) and enable Maps SDK for iOS + Android in Google Cloud (billing enabled)
+- [ ] Verify Android build config: `android.package`, adaptive icon, and Clerk/SSO redirect scheme (`triply`) registered for Android intent filters
+- [~] Initialize Sentry (client done in `_layout.tsx`; API routes pending — no `+api.ts` routes yet)
+- [ ] Set up `src/lib/env.ts` for typed env access
+- **DoD:** App boots on iOS simulator **and Android emulator**; server API route returns 200; Sentry receives a test event.
 
-## Phase 2 — Server foundation (`src/server/`)
-- [ ] `auth.ts` — verify Clerk session from request → `{ clerkId, userId }`
-- [ ] `user.ts` — `getOrCreateUser(clerkId, email)` lazy-upsert fallback
-- [ ] `entitlement.ts` — read `isPro`/`proExpiresAt` (expired → treated as free)
-- [ ] `quota.ts` — `assertCanGenerate(userId)`:
-  - [ ] free limit: non-Pro + lifetime trips ≥ 3 → `402 QUOTA`
-  - [ ] rate limit: trips in last rolling 24h ≥ 20 → `429 RATE_LIMIT` (applies to everyone incl. Pro)
+## Phase 1 — Auth & User Sync
 
-## Phase 3 — AI + generation pipeline
-- [ ] `src/ai/itinerary-schema.ts` — Zod schema mirroring DB (days→activities, places, hotels, budget)
-- [ ] `src/ai/generate-itinerary.ts` — prompt → OpenAI Structured Outputs → Zod validate → typed object (token cap)
-- [ ] `src/lib/geocode.ts` — batch geocode via Google, best-effort (`geocodeConfident` + coords or null)
-- [ ] `src/inngest/client.ts` — Inngest client
-- [ ] `src/inngest/functions/generate-trip.ts` — steps:
-  - [ ] set `trip.status = generating`
-  - [ ] generate itinerary (AI)
-  - [ ] geocode places
-  - [ ] persist tripDays / activities / places / hotelSuggestions / budgetItems (transaction)
-  - [ ] set `trip.status = ready`; on failure → `failed` + `error` + Sentry capture
+- [x] `ClerkProvider` + `tokenCache` wired into `src/app/_layout.tsx`
+- [x] Route protection: redirect signed-out → auth, signed-in → app (`(auth)/_layout.tsx` + `(home)/_layout.tsx`)
+- [x] Single auth screen (`(auth)/sign-in.tsx`) — **Google** + **Apple** both live on one page via `useSSO` (`hooks/useSSOAuth.ts`)
+  - [x] **Google** (`oauth_google`)
+  - [x] **Apple** (`oauth_apple`)
+- [x] Configure redirect URI / scheme (`triply`) for native SSO (`AuthSession.makeRedirectUri()`) — verify scheme resolves on **both iOS and Android**
+  - Note: on Android, **Apple** sign-in runs through Clerk's web OAuth (`expo-web-browser`), not the native `expo-apple-authentication` module (iOS-only)
+- [x] Sign-out action (`(home)/index.tsx` via `useClerk().signOut`)
+- [x] Clerk webhook API route (`/api/webhooks/clerk+api.ts`) verifying with `svix`
+- [x] Webhook upserts `user.created` / `user.updated` → Neon `users`
+- [x] Webhook handles `user.deleted` → remove/soft-delete user
+- [ ] Lazy-create fallback: first authed request upserts user if missing
+- **DoD:** Sign in with Google AND Apple (on both iOS and Android); a `users` row appears in Neon via webhook; sign-out works.
 
-## Phase 4 — API routes (`src/app/api/**+api.ts`)
-- [ ] `trips+api.ts` — POST create (auth → quota → rate limit → insert pending → `inngest.send` → `{id}`); GET list
-- [ ] `trips/[id]+api.ts` — GET one with relations (poll + detail), ownership-checked
-- [ ] `inngest+api.ts` — Inngest `serve()` handler
-- [ ] `webhooks/clerk+api.ts` — verify Svix signature → upsert `users` on `user.created`/`updated`; dedupe
-- [ ] `webhooks/revenuecat+api.ts` — verify → set `isPro`/`proExpiresAt`; dedupe
-- [ ] `imagekit/auth+api.ts` — short-lived ImageKit upload signature
-- [ ] `photos+api.ts` — POST attach `{tripId, imagekitUrl}` → insert `tripPhotos`, ownership-checked
+## Phase 2 — Schema & Data Layer
 
-## Phase 5 — Client (expo-router)
-- [ ] `src/lib/api.ts` — fetch wrapper injecting Clerk token, base = `EXPO_PUBLIC_API_ORIGIN`
-- [ ] `src/lib/sentry.ts` + `src/lib/revenuecat.ts`
-- [ ] `_layout.tsx` — Sentry wrap, `ClerkProvider` (secure-store token cache), splash, theme, auth redirect
-- [ ] `(auth)/sign-in.tsx` — Google + Apple OAuth buttons
-- [ ] `(app)/_layout.tsx` — authed stack; ensure user provisioned
-- [ ] `(app)/index.tsx` — Dashboard (recent/upcoming trips + Generate CTA + empty state)
-- [ ] `(app)/generate.tsx` — form (destination, days, travelers, budget, interests, pace) → POST → loading
-- [ ] `(app)/trip/[id].tsx`:
-  - [ ] pending/generating → polling loading screen (~2s, ~90s timeout)
-  - [ ] ready → itinerary cards + react-native-maps pins + hotels + budget
-  - [ ] photo upload (expo-image-picker → ImageKit auth → upload → POST /api/photos)
-  - [ ] failed → error state
-- [ ] `(app)/paywall.tsx` — RevenueCat offering on `402`; on purchase → entitlement → retry generate
+- [x] Drizzle config (`drizzle.config.ts`) pointed at Neon
+- [x] Neon serverless client (`src/db/index.ts`)
+- [x] `users` table (Clerk userId PK, email, name, imageUrl, timestamps)
+- [x] `trips` table (userId FK, destination, startDate, numDays, numTravelers, budgetTier enum, interests, status enum, coverImageUrl, itinerary jsonb, budgetBreakdown jsonb, errorMessage, timestamps)
+- [x] `chat_messages` table (tripId FK cascade, role, content, createdAt)
+- [x] `generation_usage` table/counter (per user per day) for safety cap
+- [x] Zod schemas / TS types for `itinerary` and `budgetBreakdown` jsonb shapes (`src/lib/itinerary.ts`)
+- [x] Generate + run migrations against Neon (`db:push`)
+- [x] Typed DB helpers, all scoped by authenticated `userId` (routes filter by `userId`; `src/lib/usage.ts`)
+- **DoD:** Migrations applied on Neon; helper can create/read a trip scoped to a user.
 
-## Phase 6 — Observability
-- [ ] Sentry init on client (`_layout`) and server (API routes + Inngest fn)
-- [ ] Capture generation failures (tripId + step), webhook signature failures; quota/rate-limit as breadcrumbs
+## Phase 3 — Generation Pipeline
 
-## Phase 7 — Tests (critical path)
-- [ ] Zod parse of valid + malformed OpenAI payloads
-- [ ] `quota.ts` boundaries: free 2→3→blocked; rate 19→20→429; Pro bypasses free but not rate
-- [ ] Inngest `generate-trip` with mocked AI + geocode → persisted rows + status transitions + failure path
-- [ ] Webhook signature verify + idempotency dedupe
+- [x] Generate-trip form screen: destination, travel dates, # days, # travelers, budget tier (Low/Med/Luxury), interests/style tags
+- [x] Client-side validation of the form (button gated on destination + start date; server re-validates via Zod)
+- [x] `POST /api/trips+api.ts`: auth → safety-cap check → create `trip` (status `pending`) → trigger Inngest event
+- [x] Inngest client (`src/inngest/client.ts`) + endpoint route (`/api/inngest+api.ts`)
+- [x] Inngest `generate-trip` function:
+  - [x] Set status `generating`
+  - [x] Call OpenAI (mini) with structured itinerary schema (`src/lib/openai.ts`, `gpt-4o-mini`)
+  - [x] Validate AI output against Zod schema (Structured Outputs + `tripGenerationSchema.parse`)
+  - [x] Fetch destination cover image (Unsplash) → upload/optimize via ImageKit (`src/lib/images.ts`)
+  - [x] Persist itinerary + budgetBreakdown + coverImageUrl → status `ready`
+  - [x] Retries on failure; terminal failure → status `failed` + errorMessage (quota refunded via `onFailure`)
+- [x] Silent safety cap (20 generations/user/day) enforced in `POST /api/trips` (`src/lib/usage.ts`)
+- [x] Loading screen polls `GET /api/trips/[id]/status+api.ts` (`src/app/trip-loading.tsx`)
+- [x] On `ready` → navigate to trip detail; on `failed` → error + "Try again"
+- [ ] Run against **local Inngest dev server** (no EAS Hosting in v1) — needs manual run: `npm run ios` / `npm run android` + `npm run inngest`
+- **DoD:** Submitting the form generates a real trip end-to-end locally; status flips pending→generating→ready; forced failure shows graceful error.
 
-## Phase 8 — End-to-end verification
-- [ ] Run Inngest dev server + `expo start`; sign in with Google on simulator/device
-- [ ] Generate a trip → poll works, Inngest fn runs, status → ready, detail renders itinerary + map pins
-- [ ] Force failure (bad AI key) → `failed` state + Sentry event
-- [ ] Quota: 3 trips → 4th `402` → paywall. Rate limit: 20 in 24h → 21st `429`
-- [ ] Upload photo → ImageKit URL persists + renders via `expo-image`
-- [ ] RevenueCat sandbox purchase → webhook flips `isPro` → free limit bypassed (rate limit still enforced)
-- [ ] `expo lint` + `tsc` clean
+## Phase 4 — Trip Detail & Management
+
+- [ ] Home screen: list of user's trips + "Generate trip" entry (functional; styling later)
+- [ ] `GET /api/trips+api.ts` (list) and `GET /api/trips/[id]+api.ts` (detail)
+- [ ] Trip detail: cover image (ImageKit), day-by-day itinerary
+- [ ] Places per day (attractions/restaurants) with descriptions
+- [ ] Hotel suggestions section
+- [ ] Budget breakdown section
+- [ ] Google Maps (`react-native-maps` with `PROVIDER_GOOGLE` on both iOS + Android) with place pins (LLM lat/lng)
+- [ ] Delete trip (`DELETE /api/trips/[id]+api.ts`) → cascade chat + cleanup
+- [ ] Empty state for no trips
+- **DoD:** A generated trip renders fully (itinerary/places/hotels/budget/cover/map); delete removes it everywhere.
+
+## Phase 5 — AI Chat Refine
+
+- [ ] Chat UI on trip detail (message list + input)
+- [ ] `POST /api/trips/[id]/chat+api.ts`: synchronous OpenAI (mini) call returning **targeted edits**
+- [ ] Apply edits to `itinerary` jsonb in place
+- [ ] Persist user + assistant `chat_messages`
+- [ ] Load chat history on open; context carries across sessions
+- [ ] Detail screen reflects updated itinerary after an edit
+- **DoD:** "Make day 2 more relaxed" mutates the stored itinerary in place; history persists across reopen.
+
+## Phase 6 — Hardening & Observability
+
+- [ ] Empty / error / slow-network states across screens
+- [ ] Sentry coverage on client + all API routes
+- [ ] Safety-cap soft-error behavior verified
+- [ ] Profile photo upload/optimization via ImageKit (avatar)
+- [ ] Loading/skeleton states polished
+- [ ] Final end-to-end verification pass on iOS simulator **and Android emulator**
+- **DoD:** All verification steps below pass; no unhandled errors; Sentry clean.
+- _(EAS Hosting deploy + staging deferred to a post-v1 phase.)_
 
 ---
 
-## Assumptions (flag if wrong)
-- [ ] OpenAI Structured Outputs (`response_format: json_schema`), capable model, per-gen token cap
-- [ ] Poll timeout ~90s → failed UI; trip still resolves later on dashboard
-- [ ] RevenueCat webhook syncs Pro into DB; quota reads Pro server-side (client SDK not trusted)
-- [ ] Geocoding best-effort — never fails generation
-- [ ] Photo upload via server-issued short-lived ImageKit signature; store URL only
-- [ ] Quota counts successfully-created trips (any status) toward lifetime 3
-- [ ] Rate-limit window = rolling 24h from `trips.createdAt` (no new table)
+## Deferred / Out of Scope (v1)
 
-## Out of v1
-email auth · itinerary edit/regenerate/delete · push notifications · offline · sharing · onboarding personalization · EAS Hosting deploy
+- Web · Email/password auth · Payments / paywall / user-facing quota
+- Google Places (real venue data/photos) · Push notifications · Manual itinerary editing
+- Regenerate-from-scratch · Favorites/bookmarks · Sharing/social · EAS Hosting deploy
 
-## Risks to watch
-- [ ] Full-richness generation latency vs ~90s poll window — load-test early; consider status streaming if long
-- [ ] Set OpenAI per-generation + monthly cost ceilings
-- [ ] EAS Hosting later: confirm API-route timeouts + Inngest `serve` + webhook endpoints against v57 docs
+---
+
+## Open Risks (watch these)
+
+- **R1** Inngest runs on local dev server in v1 (no EAS Hosting yet); validate hosting/timeouts only when we deploy.
+- **R2** Mini-tier + LLM-only place data → hallucination risk (Google Places is the v2 fix).
+- **R3** Google Maps needs an API key + billing enabled per platform (iOS + Android); restrict keys by bundle id / package name and watch quota/cost.
+- **R4** DB polling during loading is chatty; tune interval/backoff if generation is slow.
+- **R5** Mini-tier JSON may violate schema → rely on Zod validation + Inngest retry/`failed` path.
+- **R6** Unsplash/Pexels attribution/ToS for storing+serving via ImageKit must be checked.
+- **R7** Soft cap only — an abuser within 20/day still costs money; rely on Sentry alerts.
+
+## Key Assumptions
+
+- **A1** Map pins use LLM-provided lat/lng (approximate, unverified).
+- **A2** Stock covers from Unsplash, one per trip, keyed by destination.
+- **A3** Safety cap = 20 generations/user/day, no UI surfaced.
+- **A4** Budget tiers = Low / Medium / Luxury; breakdown is AI-estimated.
+- **A5** Visual design provided later by user; v1 builds functional screens.
+- **A6** Local dev only for v1 (Expo API routes + Inngest dev server); no prod deploy.
+- **A7** Chat edits mutate `itinerary` jsonb in place; no versioning beyond chat transcript.
+
+---
+
+## Spec Summary
+
+**Product:** AI travel-itinerary generator. User inputs constraints → AI produces a structured
+multi-day plan → user refines via chat. Single role, consumer travelers, iOS + Android.
+
+**Stack:**
+
+- **Auth:** Clerk (Google + Apple only), webhook syncs users → Neon
+- **Backend:** Expo Router API routes (`+api.ts`), local dev + Inngest dev server (no EAS Hosting v1)
+- **DB:** Neon Postgres + Drizzle ORM
+- **AI:** OpenAI, mini tier everywhere, structured JSON itineraries
+- **Background jobs:** Inngest (durable generation + retries)
+- **Images:** ImageKit (profile photos + per-trip cover images); covers sourced from Unsplash
+- **Maps:** Google Maps via `react-native-maps` (`PROVIDER_GOOGLE`) on iOS + Android; requires Google Maps API key(s)
+- **Monitoring:** Sentry
+
+**Core journeys:**
+
+1. First run → Clerk sign-in (Google/Apple) → webhook upserts user → home (empty).
+2. Generate → form → `POST /trips` (status `pending`) + Inngest → loading polls status → `ready` → detail. Failure → retries → `failed` → "Try again" (quota untouched).
+3. Refine → chat → synchronous OpenAI targeted edits → trip updated in place + history persisted.
+4. Manage → home lists trips → view → delete (cascade).
+
+**Data model:**
+
+- `users` (Clerk userId PK, email, name, imageUrl, timestamps)
+- `trips` (userId FK, destination, startDate, numDays, numTravelers, budgetTier, interests, status, coverImageUrl, itinerary jsonb, budgetBreakdown jsonb, errorMessage, timestamps)
+- `chat_messages` (tripId FK cascade, role, content, createdAt)
+- `generation_usage` (per user/day counter for safety cap)
+
+**Verification (final):**
+
+- Sign in with Google + Apple → `users` row in Neon via webhook.
+- Submit form → status `pending`→`generating`→`ready` → detail renders itinerary/budget/cover/map.
+- Force OpenAI failure → retries → `failed` → "Try again", quota untouched.
+- Delete removes trip + chat.
+- Chat edit ("make day 2 more relaxed") mutates itinerary in place; history persists.
+- Exceed per-day cap → soft error; Sentry receives events.
+- Runs on iOS simulator **and Android emulator** via `npm run ios` / `npm run android` + local Inngest dev server.
