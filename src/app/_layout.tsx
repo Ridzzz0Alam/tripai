@@ -3,6 +3,8 @@ import "../../global.css";
 import { useEffect } from "react";
 import { Stack, useNavigationContainerRef } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ClerkProvider } from "@clerk/clerk-expo";
+import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import * as Sentry from "@sentry/react-native";
 
 // Tracks screen transitions as spans. Created outside the component so it can
@@ -30,9 +32,14 @@ function RootLayout() {
   }, [ref]);
 
   return (
-    <SafeAreaProvider>
-      <Stack screenOptions={{ headerShown: false }} />
-    </SafeAreaProvider>
+    <ClerkProvider
+      publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      tokenCache={tokenCache}
+    >
+      <SafeAreaProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+      </SafeAreaProvider>
+    </ClerkProvider>
   );
 }
 

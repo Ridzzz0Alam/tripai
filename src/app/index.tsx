@@ -1,7 +1,11 @@
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { StatusBar } from "expo-status-bar";
+import { Redirect } from "expo-router";
+import { useAuth } from "@clerk/clerk-expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { useSSOAuth } from "@/hooks/useSSOAuth";
 
 // Background photo pre-composited with the fade into the teal backdrop, plus the
 // two brand marks — baked to static assets so no extra native modules are needed.
@@ -13,6 +17,15 @@ const TEAL = "#04333F";
 
 export default function AuthScreen() {
   const insets = useSafeAreaInsets();
+  const { isLoaded, isSignedIn } = useAuth();
+  const { pending, signInWithGoogle, signInWithApple } = useSSOAuth();
+
+  // A persisted session (via tokenCache) sends the user straight to the app.
+  if (isLoaded && isSignedIn) {
+    return <Redirect href="/home" />;
+  }
+
+  const busy = pending !== null;
 
   return (
     <View className="flex-1" style={{ backgroundColor: TEAL }}>
@@ -25,37 +38,55 @@ export default function AuthScreen() {
         contentPosition="top"
       />
 
-      {/* Foreground: heading floats over the water, actions pinned to the bottom. */}
+      {/* Foreground: heading and actions grouped together, centered over the water. */}
       <View className="flex-1 px-8" style={{ paddingBottom: insets.bottom + 28 }}>
-        <View style={{ flex: 1.25 }} />
+        <View style={{ flex: 2 }} />
 
         <View className="items-center">
           <Text style={styles.heading}>Dream Trips,{"\n"}Made Effortless</Text>
+        </View>
 
-          <View className="flex-row" style={{ marginTop: 28 }}>
-            <View style={[styles.dot, styles.dotActive]} />
-            <View style={styles.dot} />
-            <View style={styles.dot} />
-          </View>
+        {/* Social CTAs */}
+        <View style={{ marginTop: 28 }}>
+          <Pressable
+            style={[styles.socialBtn, busy && styles.socialBtnPressed]}
+            android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+            disabled={busy}
+            onPress={signInWithGoogle}
+          >
+            {pending === "oauth_google" ? (
+              <ActivityIndicator color="#1A1A22" />
+            ) : (
+              <>
+                <Image source={googleIcon} style={styles.googleIcon} contentFit="contain" />
+                <Text style={styles.socialText}>Continue with Google</Text>
+              </>
+            )}
+          </Pressable>
+          <Pressable
+            style={[styles.socialBtn, { marginTop: 16 }, busy && styles.socialBtnPressed]}
+            android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+            disabled={busy}
+            onPress={signInWithApple}
+          >
+            {pending === "oauth_apple" ? (
+              <ActivityIndicator color="#1A1A22" />
+            ) : (
+              <>
+                <Image source={appleIcon} style={styles.appleIcon} contentFit="contain" />
+                <Text style={styles.socialText}>Continue with Apple</Text>
+              </>
+            )}
+          </Pressable>
+
+          <Text style={styles.terms}>
+            By continuing you agree to our{" "}
+            <Text style={styles.termsLink}>Terms of Service</Text> and{" "}
+            <Text style={styles.termsLink}>Privacy Policy</Text>
+          </Text>
         </View>
 
         <View style={{ flex: 1 }} />
-
-        {/* Social CTAs */}
-        <Pressable style={styles.socialBtn}>
-          <Image source={googleIcon} style={styles.googleIcon} contentFit="contain" />
-          <Text style={styles.socialText}>Continue with Google</Text>
-        </Pressable>
-        <Pressable style={[styles.socialBtn, { marginTop: 16 }]}>
-          <Image source={appleIcon} style={styles.appleIcon} contentFit="contain" />
-          <Text style={styles.socialText}>Continue with Apple</Text>
-        </Pressable>
-
-        <Text style={styles.terms}>
-          By continuing you agree to our{" "}
-          <Text style={styles.termsLink}>Terms of Service</Text> and{" "}
-          <Text style={styles.termsLink}>Privacy Policy</Text>
-        </Text>
       </View>
     </View>
   );
@@ -70,19 +101,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     letterSpacing: 0.2,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 4,
-    backgroundColor: "rgba(255,255,255,0.35)",
-  },
-  dotActive: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: "#FFFFFF",
-  },
   socialBtn: {
     height: 54,
     borderRadius: 15,
@@ -95,6 +113,9 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
+  },
+  socialBtnPressed: {
+    opacity: 0.7,
   },
   socialText: {
     color: "#1A1A22",
