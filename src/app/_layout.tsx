@@ -2,6 +2,7 @@ import "../../global.css";
 
 import { useEffect } from "react";
 import { Stack, useNavigationContainerRef } from "expo-router";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as Sentry from "@sentry/react-native";
 
 // Tracks screen transitions as spans. Created outside the component so it can
@@ -28,7 +29,11 @@ function RootLayout() {
     }
   }, [ref]);
 
-  return <Stack />;
+  return (
+    <SafeAreaProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </SafeAreaProvider>
+  );
 }
 
 // Sentry.wrap enables automatic error boundary + touch/profiling instrumentation.
