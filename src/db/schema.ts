@@ -38,6 +38,9 @@ export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   clerkId: text("clerk_id").notNull().unique(),
   email: text("email").notNull(),
+  // Synced from Clerk on `user.created`; both are optional on Clerk's side.
+  name: text("name"),
+  imageUrl: text("image_url"),
   homeCity: text("home_city"),
   interests: text("interests"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

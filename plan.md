@@ -17,7 +17,7 @@
 - [ ] Read Expo v56 docs for API routes / server output (per `AGENTS.md`)
 - [x] Set `web.output: "server"` in `app.json` (enables API routes)
 - [x] Install Expo-native deps: `@sentry/react-native`, `react-native-maps`, `expo-secure-store`, `expo-web-browser`, `expo-auth-session`, `expo-crypto`, `expo-apple-authentication`
-- [~] Install JS/server deps: `@clerk/expo` ✅ · `drizzle-orm` ✅ · `@neondatabase/serverless` ✅ · `inngest` ✅ · `svix` ✅ · `openai`, `imagekit`, `zod` (deferred to their phases)
+- [x] Install JS/server deps: `@clerk/expo` ✅ · `drizzle-orm` ✅ · `@neondatabase/serverless` ✅ · `inngest` ✅ · `svix` ✅ · `openai` ✅ · `imagekit` ✅ · `zod` ✅
 - [x] Install dev deps: `drizzle-kit`, `dotenv`
 - [~] Create `.env` + `.env.example` with all keys (Clerk, Neon, OpenAI, ImageKit, Unsplash, Sentry, Inngest · **Google Maps API key pending**)
 - [~] Add Clerk + relevant config plugins to `app.json` (`@clerk/expo`, `expo-secure-store`, `expo-web-browser`, Sentry)
@@ -38,8 +38,8 @@
   - Note: on Android, **Apple** sign-in runs through Clerk's web OAuth (`expo-web-browser`), not the native `expo-apple-authentication` module (iOS-only)
 - [x] Sign-out action (`(home)/index.tsx` via `useClerk().signOut`)
 - [x] Clerk webhook API route (`/api/webhooks/clerk+api.ts`) verifying with `svix`
-- [x] Webhook upserts `user.created` / `user.updated` → Neon `users`
-- [x] Webhook handles `user.deleted` → remove/soft-delete user
+- [x] Webhook forwards `user.created` / `user.updated` → Inngest → upsert Neon `users` (`syncUserCreated` / `syncUserUpdated`)
+- [x] Webhook handles `user.deleted` → Inngest `syncUserDeleted` → hard-delete user (trips/photos cascade)
 - [ ] Lazy-create fallback: first authed request upserts user if missing
 - **DoD:** Sign in with Google AND Apple (on both iOS and Android); a `users` row appears in Neon via webhook; sign-out works.
 
