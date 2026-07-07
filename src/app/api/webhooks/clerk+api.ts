@@ -58,8 +58,14 @@ export async function POST(request: Request) {
 
   // `user.deleted` only carries the id; forward it and delete in the background.
   if (type === "user.deleted") {
-    const eventData = clerkUserDeletedData.parse({ clerkId: data.id });
-    await inngest.send(clerkUserDeleted.create(eventData));
+    const eventData = clerkUserDeletedData.safeParse({ clerkId: data.id });
+    if (!eventData.success) {
+      // Unprocessable payload: ack with 200 so Svix drops it instead of
+      // retrying a request that can never succeed.
+      console.error("Invalid user.deleted payload", eventData.error);
+      return Response.json({ ok: true, dropped: type });
+    }
+    await inngest.send(clerkUserDeleted.create(eventData.data));
     return Response.json({ ok: true });
   }
 
@@ -73,7 +79,10 @@ export async function POST(request: Request) {
       ?.email_address ?? data.email_addresses[0]?.email_address;
 
   if (!primaryEmail) {
-    return Response.json({ error: "User has no email" }, { status: 400 });
+    // A user with no email is unprocessable and won't fix itself on retry; ack
+    // with 200 so Svix drops it rather than retrying indefinitely.
+    console.error("Clerk user has no email; dropping", { type, id: data.id });
+    return Response.json({ ok: true, dropped: type });
   }
 
   const name =
@@ -81,19 +90,25 @@ export async function POST(request: Request) {
 
   // Re-validate the narrowed payload before handing it to the background job.
   // `user.created` and `user.updated` forward the same shape.
-  const eventData = clerkUserCreatedData.parse({
+  const eventData = clerkUserCreatedData.safeParse({
     clerkId: data.id,
     email: primaryEmail,
     name,
     imageUrl: data.image_url || null,
   });
+  if (!eventData.success) {
+    // Unprocessable payload: ack with 200 so Svix drops it instead of retrying
+    // a request that can never succeed.
+    console.error(`Invalid ${type} payload`, eventData.error);
+    return Response.json({ ok: true, dropped: type });
+  }
 
   // Hand off to Inngest; the DB write happens in the background function so the
   // webhook responds fast and retries are handled by Inngest.
   await inngest.send(
     type === "user.created"
-      ? clerkUserCreated.create(eventData)
-      : clerkUserUpdated.create(eventData),
+      ? clerkUserCreated.create(eventData.data)
+      : clerkUserUpdated.create(eventData.data),
   );
 
   return Response.json({ ok: true });

@@ -5,9 +5,9 @@ import { z } from "zod";
 // the (large) Clerk user object down to just the fields we persist.
 export const clerkUserCreatedData = z.object({
   clerkId: z.string().min(1),
-  email: z.string().email(),
+  email: z.email(),
   name: z.string().nullable(),
-  imageUrl: z.string().url().nullable(),
+  imageUrl: z.url().nullable(),
 });
 
 export type ClerkUserCreatedData = z.infer<typeof clerkUserCreatedData>;

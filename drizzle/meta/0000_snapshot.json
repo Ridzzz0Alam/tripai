@@ -1,5 +1,5 @@
 {
-  "id": "baee3489-1be3-4774-bf04-f93986b9cd66",
+  "id": "583317dd-115d-4c59-b5e3-60a63b97fb85",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -58,7 +58,38 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "activities_trip_day_id_idx": {
+          "name": "activities_trip_day_id_idx",
+          "columns": [
+            {
+              "expression": "trip_day_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "activities_place_id_idx": {
+          "name": "activities_place_id_idx",
+          "columns": [
+            {
+              "expression": "place_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "activities_trip_day_id_trip_days_id_fk": {
           "name": "activities_trip_day_id_trip_days_id_fk",
@@ -124,7 +155,23 @@
           "notNull": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "budget_items_trip_id_idx": {
+          "name": "budget_items_trip_id_idx",
+          "columns": [
+            {
+              "expression": "trip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "budget_items_trip_id_trips_id_fk": {
           "name": "budget_items_trip_id_trips_id_fk",
@@ -188,7 +235,38 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "hotel_suggestions_trip_id_idx": {
+          "name": "hotel_suggestions_trip_id_idx",
+          "columns": [
+            {
+              "expression": "trip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "hotel_suggestions_place_id_idx": {
+          "name": "hotel_suggestions_place_id_idx",
+          "columns": [
+            {
+              "expression": "place_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "hotel_suggestions_trip_id_trips_id_fk": {
           "name": "hotel_suggestions_trip_id_trips_id_fk",
@@ -284,7 +362,23 @@
           "default": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "places_trip_id_idx": {
+          "name": "places_trip_id_idx",
+          "columns": [
+            {
+              "expression": "trip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "places_trip_id_trips_id_fk": {
           "name": "places_trip_id_trips_id_fk",
@@ -336,7 +430,23 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "trip_days_trip_id_idx": {
+          "name": "trip_days_trip_id_idx",
+          "columns": [
+            {
+              "expression": "trip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "trip_days_trip_id_trips_id_fk": {
           "name": "trip_days_trip_id_trips_id_fk",
@@ -395,7 +505,38 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "trip_photos_trip_id_idx": {
+          "name": "trip_photos_trip_id_idx",
+          "columns": [
+            {
+              "expression": "trip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "trip_photos_user_id_idx": {
+          "name": "trip_photos_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "trip_photos_trip_id_trips_id_fk": {
           "name": "trip_photos_trip_id_trips_id_fk",
@@ -507,7 +648,23 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "trips_user_id_idx": {
+          "name": "trips_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "trips_user_id_users_id_fk": {
           "name": "trips_user_id_users_id_fk",

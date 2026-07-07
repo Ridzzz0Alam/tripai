@@ -90,4 +90,14 @@ ALTER TABLE "places" ADD CONSTRAINT "places_trip_id_trips_id_fk" FOREIGN KEY ("t
 ALTER TABLE "trip_days" ADD CONSTRAINT "trip_days_trip_id_trips_id_fk" FOREIGN KEY ("trip_id") REFERENCES "public"."trips"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "trip_photos" ADD CONSTRAINT "trip_photos_trip_id_trips_id_fk" FOREIGN KEY ("trip_id") REFERENCES "public"."trips"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "trip_photos" ADD CONSTRAINT "trip_photos_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "trips" ADD CONSTRAINT "trips_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "trips" ADD CONSTRAINT "trips_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "activities_trip_day_id_idx" ON "activities" USING btree ("trip_day_id");--> statement-breakpoint
+CREATE INDEX "activities_place_id_idx" ON "activities" USING btree ("place_id");--> statement-breakpoint
+CREATE INDEX "budget_items_trip_id_idx" ON "budget_items" USING btree ("trip_id");--> statement-breakpoint
+CREATE INDEX "hotel_suggestions_trip_id_idx" ON "hotel_suggestions" USING btree ("trip_id");--> statement-breakpoint
+CREATE INDEX "hotel_suggestions_place_id_idx" ON "hotel_suggestions" USING btree ("place_id");--> statement-breakpoint
+CREATE INDEX "places_trip_id_idx" ON "places" USING btree ("trip_id");--> statement-breakpoint
+CREATE INDEX "trip_days_trip_id_idx" ON "trip_days" USING btree ("trip_id");--> statement-breakpoint
+CREATE INDEX "trip_photos_trip_id_idx" ON "trip_photos" USING btree ("trip_id");--> statement-breakpoint
+CREATE INDEX "trip_photos_user_id_idx" ON "trip_photos" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "trips_user_id_idx" ON "trips" USING btree ("user_id");

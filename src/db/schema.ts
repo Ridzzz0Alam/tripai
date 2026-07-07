@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import {
   boolean,
   doublePrecision,
+  index,
   integer,
   pgEnum,
   pgTable,
@@ -60,7 +61,7 @@ export const trips = pgTable("trips", {
   status: tripStatus("status").notNull().default("pending"),
   error: text("error"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => [index("trips_user_id_idx").on(table.userId)]);
 
 // Cached, geocoded real-world places. Coordinates are nullable so the itinerary
 // degrades gracefully to text when geocoding cannot confidently resolve a place.
@@ -76,7 +77,7 @@ export const places = pgTable("places", {
   lng: doublePrecision("lng"),
   category: text("category"),
   geocodeConfident: boolean("geocode_confident").notNull().default(false),
-});
+}, (table) => [index("places_trip_id_idx").on(table.tripId)]);
 
 export const tripDays = pgTable("trip_days", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -85,7 +86,7 @@ export const tripDays = pgTable("trip_days", {
     .references(() => trips.id, { onDelete: "cascade" }),
   dayNumber: integer("day_number").notNull(),
   summary: text("summary"),
-});
+}, (table) => [index("trip_days_trip_id_idx").on(table.tripId)]);
 
 export const activities = pgTable("activities", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -98,7 +99,10 @@ export const activities = pgTable("activities", {
   description: text("description"),
   timeHint: text("time_hint"),
   costEstimate: text("cost_estimate"),
-});
+}, (table) => [
+  index("activities_trip_day_id_idx").on(table.tripDayId),
+  index("activities_place_id_idx").on(table.placeId),
+]);
 
 export const hotelSuggestions = pgTable("hotel_suggestions", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -109,7 +113,10 @@ export const hotelSuggestions = pgTable("hotel_suggestions", {
   name: text("name").notNull(),
   priceEstimate: text("price_estimate"),
   area: text("area"),
-});
+}, (table) => [
+  index("hotel_suggestions_trip_id_idx").on(table.tripId),
+  index("hotel_suggestions_place_id_idx").on(table.placeId),
+]);
 
 export const budgetItems = pgTable("budget_items", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -118,7 +125,7 @@ export const budgetItems = pgTable("budget_items", {
     .references(() => trips.id, { onDelete: "cascade" }),
   category: budgetCategory("category").notNull(),
   amount: text("amount").notNull(),
-});
+}, (table) => [index("budget_items_trip_id_idx").on(table.tripId)]);
 
 export const tripPhotos = pgTable("trip_photos", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -130,7 +137,10 @@ export const tripPhotos = pgTable("trip_photos", {
     .references(() => users.id, { onDelete: "cascade" }),
   imagekitUrl: text("imagekit_url").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => [
+  index("trip_photos_trip_id_idx").on(table.tripId),
+  index("trip_photos_user_id_idx").on(table.userId),
+]);
 
 // ---------------------------------------------------------------------------
 // Relations

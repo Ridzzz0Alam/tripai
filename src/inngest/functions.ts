@@ -5,28 +5,35 @@ import { users } from "@/db/schema";
 
 import {
   clerkUserCreated,
+  type ClerkUserCreatedData,
   clerkUserDeleted,
   clerkUserUpdated,
   inngest,
 } from "./client";
 
-// Consumes `clerk/user.created` and upserts the user into Neon. Upsert (rather
-// than plain insert) keeps the function idempotent: Inngest may retry, and
+// Shared upsert used by both `user.created` and `user.updated`. Upsert (rather
+// than plain insert) keeps the handlers idempotent: Inngest may retry, and
 // Clerk can re-deliver a webhook, so a second run must not fail on the unique
-// `clerk_id` constraint.
+// `clerk_id` constraint. Centralized here so the two handlers can't drift.
+async function upsertUser(data: ClerkUserCreatedData) {
+  const { clerkId, email, name, imageUrl } = data;
+  await db
+    .insert(users)
+    .values({ clerkId, email, name, imageUrl })
+    .onConflictDoUpdate({
+      target: users.clerkId,
+      set: { email, name, imageUrl },
+    });
+}
+
+// Consumes `clerk/user.created` and upserts the user into Neon.
 export const syncUserCreated = inngest.createFunction(
   { id: "sync-user-created", triggers: [{ event: clerkUserCreated }] },
   async ({ event, step }) => {
     const { clerkId, email, name, imageUrl } = event.data;
 
     await step.run("upsert-user", async () => {
-      await db
-        .insert(users)
-        .values({ clerkId, email, name, imageUrl })
-        .onConflictDoUpdate({
-          target: users.clerkId,
-          set: { email, name, imageUrl },
-        });
+      await upsertUser({ clerkId, email, name, imageUrl });
     });
 
     return { clerkId };
@@ -42,13 +49,7 @@ export const syncUserUpdated = inngest.createFunction(
     const { clerkId, email, name, imageUrl } = event.data;
 
     await step.run("upsert-user", async () => {
-      await db
-        .insert(users)
-        .values({ clerkId, email, name, imageUrl })
-        .onConflictDoUpdate({
-          target: users.clerkId,
-          set: { email, name, imageUrl },
-        });
+      await upsertUser({ clerkId, email, name, imageUrl });
     });
 
     return { clerkId };
